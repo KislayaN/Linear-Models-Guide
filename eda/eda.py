@@ -3,7 +3,6 @@ import pandas as pd
 
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-
 class EDA:
     def __init__(self, data):
         self.data = data
