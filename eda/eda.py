@@ -12,7 +12,6 @@ class EDA:
         self.skewness_stats = None
         self.outliers_stats_df = None
         self.corr_pairs = None
-        
     
     def analyze_skew(self):
         # Select only numerical columns
