@@ -3,25 +3,12 @@ import pandas as pd
 
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-import sys
-import os
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, ".."))
-
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-    
-from data.get_data import Load_data
-data_loader = Load_data()
-data = data_loader.load()
 
 class EDA:
     def __init__(self, data):
         self.data = data
         self.dataframe_X = data[0]
         self.dataframe_y = data[1]
-        self.target_name = data[1].name
         self.feature_columns = data[0].columns
         self.skewness_stats = None
         self.outliers_stats_df = None
@@ -212,7 +199,6 @@ class EDA:
             drop_feature = vif_data.sort_values(by='VIF', ascending=False)['Features'].iloc[0]
             dropped_cols.append(drop_feature)
             
-            print(f"Dropping {drop_feature} with VIF = {round(max_vif,2)}")
             X_dataframe = X_dataframe.drop(columns=[drop_feature])
             
         self.vif_result = vif_data.sort_values(by='VIF', ascending=False)
@@ -233,7 +219,7 @@ class EDA:
     
     def build_preprocessing_plan(self):
         lowcard, highcard, idcard = self.analyze_cardinality()
-        vif_result, vif_cols = self.analyze_vif()
+        _, vif_cols = self.analyze_vif()
         
         skew_cols = self.get_skewed_cols()
         log_cols = skew_cols
@@ -253,7 +239,3 @@ class EDA:
             "Drop ID": idcard,
             "VIF Selected": vif_cols 
         }
-        
-eda = EDA(data=data)
-result = eda.build_preprocessing_plan()
-print(result)
