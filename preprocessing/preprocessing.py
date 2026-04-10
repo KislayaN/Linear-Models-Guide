@@ -6,19 +6,19 @@ from sklearn.preprocessing import StandardScaler, RobustScaler, OneHotEncoder, F
 from sklearn.pipeline import Pipeline
 
 class Preprocessing:
-    def __init__(self, dataframe=None, X_train=None, X_test=None, y_train=None, y_test=None, feature_cols=None, columns_to_drop=None, vif_selected_cols=None, robust_scale_cols=None, log_transform_cols=None, standard_scale_cols=None, ohe_encode_cols=None):
-        self.dataframe = dataframe
-        self.feature_names = feature_cols
-        self.columns_to_drop = columns_to_drop
+    def __init__(self, plan=None, X_train=None, X_test=None, y_train=None):
+        self.plan = plan
         self.X_train = X_train
         self.X_test = X_test
         self.y_train = y_train
-        self.y_test = y_test
-        self.vif_selected_cols = vif_selected_cols
-        self.log_transform_cols = log_transform_cols
-        self.robust_scale_cols = robust_scale_cols
-        self.standard_scale_cols = standard_scale_cols
-        self.ohe_encode_cols = ohe_encode_cols
+        
+        self.columns_to_drop = plan["Drop Corr"] + plan["Drop ID"]
+        self.vif_selected_cols = plan["VIF Selected"]
+        self.log_transform_cols = plan["Log Transform"]
+        self.robust_scale_cols = plan["Robust Scale"]
+        self.standard_scale_cols = plan["Standard Scale"]
+        self.ohe_encode_cols = plan["OHE (One Hot Encoding)"]
+        self.high_card_encode = plan["High Card Encode"]
         
     def get_categoric_cols(self, dataframe):
         return dataframe.select_dtypes(include=['object', 'bool']).columns.to_list()
@@ -28,6 +28,8 @@ class Preprocessing:
     
     def target_encode(self, X_train=None, y_train=None, high_card_cols=None, X_test=None):
         global_mean = y_train.mean()
+        X_train = X_train.copy()
+        X_test = X_test.copy()
     
         for col in high_card_cols:
             mapping = pd.concat([X_train[col], y_train], axis=1).groupby(col)[y_train.name].mean()
@@ -39,7 +41,7 @@ class Preprocessing:
                 X_test[col] = X_test[col].map(mapping)
             
                 # handle unseen categories
-                X_test[col].fillna(global_mean, inplace=True)
+                X_test[col] = X_test[col].fillna(global_mean)
         
         return X_train, X_test
         
@@ -50,13 +52,17 @@ class Preprocessing:
         
         y_train = self.y_train.copy()
         
-        X_train = X_train.drop(columns=self.columns_to_drop)
-        X_test = X_test.drop(columns=self.columns_to_drop)
+        to_drop = [c for c in self.columns_to_drop if c in X_train.columns]
         
-        X_train = X_train[self.vif_selected_cols]
-        X_test = X_test[self.vif_selected_cols]
+        X_train = X_train.drop(columns=to_drop)
+        X_test = X_test.drop(columns=to_drop)
         
-        high_card_encode = [c for c in high_card_encode if c in X_train.columns]
+        valid_vif_cols = [c for c in self.vif_selected_cols if c in X_train.columns]
+        
+        X_train = X_train[valid_vif_cols]
+        X_test = X_test[valid_vif_cols]
+        
+        high_card_encode = [c for c in self.high_card_encode if c in X_train.columns]
         
         X_train, X_test = self.target_encode(
             X_test=X_test,
@@ -83,11 +89,11 @@ class Preprocessing:
             ('scaler', StandardScaler())
         ])
         
-        preprocessor = ColumnTransformer([
+        self.execute = ColumnTransformer([
             ('log', log_pipeline, log_cols),
             ('robust', robust_pipeline, robust_cols),
             ('standard', standard_pipeline, standard_cols),
             ('ohe', OneHotEncoder(handle_unknown='ignore'), ohe_cols)
         ])
         
-        return preprocessor, X_train, X_test
+        return X_train, X_test
