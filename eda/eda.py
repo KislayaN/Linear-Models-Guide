@@ -89,7 +89,7 @@ class EDA:
         for col in cat_cols:
             series = self.dataframe_X[col]
             
-            unique_count = series.nunique(drop_na=True)
+            unique_count = series.nunique(dropna=True)
             total = len(series)
             ratio = unique_count / len(series) if total > 0 else 0
                 
@@ -127,14 +127,20 @@ class EDA:
         return outliers_df[outliers_df['level'].isin(['High', 'Very High'])].index.tolist()
     
     def build_preprocessing_plan(self):
-        lowcard, highcard, idcard = self.analyze_cardinality()
+        card_df = self.analyze_cardinality()
         skew_cols = self.get_skewed_cols()
         outlier_cols = self.get_outlier_cols()
         
         return {
             "skewed_cols": skew_cols,
             "outlier_cols": outlier_cols,
-            "cow_card_cols": lowcard,
-            "high_card_cols": highcard,
-            "id_cols": idcard,
+            "low_card_cols": card_df[card_df["Cardinality"] == "Low Cardinality"],
+            "high_card_cols": card_df[
+                card_df["Cardinality"].isin([
+                    'Moderate Cardinality',
+                    'High Cardinality',
+                    'Very High Cardinality'
+                ])
+                ].index.tolist(),
+            "id_cols": card_df[card_df["Cardinality"] == "ID Like"]
         }
