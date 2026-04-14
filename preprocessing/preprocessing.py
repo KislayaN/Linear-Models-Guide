@@ -17,7 +17,7 @@ class Preprocessing:
         self.log_transform_cols = plan["skewed_cols"]
         self.robust_scale_cols = plan["outlier_cols"]
         self.ohe_encode_cols = plan["low_card_cols"]
-        self.high_card_cols = plan["high_card_encode"]
+        self.high_card_cols = plan["high_card_cols"]
 
     def get_categoric_cols(self, dataframe):
         return dataframe.select_dtypes(include=['object', 'bool', 'category']).columns.to_list()
@@ -41,7 +41,10 @@ class Preprocessing:
         
         log_pipeline = Pipeline([
             ('impute-num', SimpleImputer(strategy='median')),
-            ('log', FunctionTransformer(lambda x: np.log1p(np.clip(x, a_min=0, a_max=None)))),
+            ('log', FunctionTransformer(
+                lambda x: np.log1p(np.clip(x, a_min=0, a_max=None)),
+                feature_names_out = 'one-to-one'
+            )),
             ('scaler', StandardScaler())
         ])
         
@@ -60,11 +63,20 @@ class Preprocessing:
             ('ohe', OneHotEncoder(handle_unknown='ignore', drop='first'))
         ])
         
-        self.column_transformer = ColumnTransformer([
-            ('log', log_pipeline, log_cols),
-            ('robust', robust_pipeline, robust_cols),
-            ('standard', standard_pipeline, standard_cols),
-            ('ohe', ohe_pipeline, ohe_cols)
-        ])
+        transformers = []
+
+        if log_cols:
+            transformers.append(('log', log_pipeline, log_cols))
+
+        if robust_cols:
+            transformers.append(('robust', robust_pipeline, robust_cols))
+
+        if standard_cols:
+            transformers.append(('standard', standard_pipeline, standard_cols))
+
+        if ohe_cols:
+            transformers.append(('ohe', ohe_pipeline, ohe_cols))
+
+        self.column_transformer = ColumnTransformer(transformers)
         
         return X_train, X_test
